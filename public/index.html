@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sealed – write it now, open it later</title>
+<meta name="description" content="Seal a letter or a prediction until a date you choose. Not even you can peek, and the server proves it never changed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF1F5; --card: #FFFFFF; --ink: #141B2D; --muted: #5B6578; --line: #CDD4E0;
+    --red: #D6403A; --blue: #1F4E9C; --wax: #8E1B2E; --ok: #1E7A4C;
+    --display: "DM Serif Display", Georgia, serif;
+    --ui: "Instrument Sans", "Segoe UI", Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, monospace;
+    --stripes: repeating-linear-gradient(135deg, var(--red) 0 14px, var(--card) 14px 28px, var(--blue) 28px 42px, var(--card) 42px 56px);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--ui); line-height: 1.55; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 1.25rem; }
+  .mono { font-family: var(--mono); }
+  .small { font-size: .85rem; }
+  .muted { color: var(--muted); }
+
+  .stripe { height: 10px; background: var(--stripes); }
+  header .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1.5rem; padding-top: .9rem; padding-bottom: .6rem; }
+  .brand { display: flex; align-items: center; gap: .55rem; font-family: var(--display); font-size: 1.8rem; line-height: 1; }
+  .wax { width: 34px; height: 34px; }
+  .tabs { display: flex; gap: .15rem; overflow-x: auto; }
+  .tab { background: none; border: 0; padding: .5rem .8rem; font-weight: 500; color: var(--muted); border-radius: 8px; white-space: nowrap; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+  main { padding: 1.5rem 0 4rem; }
+
+  h1.hero { font-family: var(--display); font-weight: 400; font-size: clamp(2.4rem, 8vw, 4rem); line-height: 1.02; margin: .5rem 0 .75rem; letter-spacing: -.01em; }
+  .lead { max-width: 52ch; color: var(--muted); font-size: 1.1rem; margin: 0 0 1.25rem; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 1.7rem; margin: 0 0 .75rem; }
+  h3 { font-family: var(--display); font-weight: 400; font-size: 1.3rem; margin: .25rem 0 .4rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin: 1.25rem 0 2rem; }
+  .stat { background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: .65rem .75rem; }
+  .stat b { display: block; font-family: var(--mono); font-weight: 500; font-size: 1.25rem; }
+  .stat span { font-size: .8rem; color: var(--muted); }
+
+  .btn { background: var(--ink); color: var(--paper); border: 0; border-radius: 10px; padding: .7rem 1.4rem; font-weight: 700; min-height: 46px; }
+  .btn:hover { background: var(--blue); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
+  .btn.ghost:hover { background: var(--ink); color: var(--paper); }
+  .mini { background: transparent; border: 1.5px solid var(--ink); border-radius: 8px; padding: .3rem .7rem; font-size: .85rem; font-weight: 500; min-height: 34px; }
+  .mini:hover, .mini[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .mini.danger { border-color: var(--red); color: var(--red); }
+  .mini.danger:hover { background: var(--red); color: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+  .chip { background: transparent; border: 2px solid var(--ink); border-radius: 999px; padding: .35rem .9rem; font-weight: 500; min-height: 40px; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+  .list { display: grid; gap: 1rem; margin-top: 1rem; }
+  .cap { position: relative; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 1.25rem 1.1rem 1rem; overflow: hidden; }
+  .cap::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: var(--stripes); }
+  .cap-head { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+  .tag { font-family: var(--mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--blue); font-weight: 500; }
+  .body { white-space: pre-wrap; margin: .3rem 0 .8rem; overflow-wrap: anywhere; }
+  .cap-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; align-items: center; border-top: 1px dashed var(--line); padding-top: .7rem; }
+  .sealrow { display: flex; gap: .9rem; align-items: center; margin: .3rem 0; }
+  .count { font-family: var(--mono); font-size: 1.3rem; font-weight: 500; margin: 0; }
+  .badge { display: inline-block; font-family: var(--mono); font-size: .8rem; padding: .15rem .6rem; border-radius: 999px; border: 1.5px solid; margin-bottom: .6rem; }
+  .badge.true { color: var(--ok); } .badge.partly { color: #9A6A00; } .badge.false { color: var(--red); }
+  .vf { margin: .5rem 0 0; font-family: var(--mono); font-size: .8rem; overflow-wrap: anywhere; }
+  .vf.good { color: var(--ok); } .vf.bad { color: var(--red); }
+  .empty { padding: 1.5rem; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 14px; }
+
+  .panel { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; padding: 1.25rem; position: relative; overflow: hidden; }
+  .panel::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: var(--stripes); }
+  form.stack { display: grid; gap: 1rem; margin-top: .5rem; }
+  label, .lab { display: grid; gap: .3rem; font-weight: 700; font-size: .92rem; }
+  input[type=text], input[type=password], input[type=datetime-local], textarea { background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: .6rem .8rem; min-height: 44px; width: 100%; }
+  textarea { min-height: 150px; resize: vertical; }
+  .hint { font-weight: 400; color: var(--muted); font-size: .85rem; }
+  .err { color: var(--red); min-height: 1.4em; margin: 0; }
+  .note { background: #E7F3EC; border: 1.5px solid var(--ok); border-radius: 12px; padding: .8rem 1rem; margin-top: 1rem; overflow-wrap: anywhere; }
+
+  .rank { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .4rem; }
+  .rank li { display: grid; grid-template-columns: 2rem 1fr auto; gap: .6rem; align-items: center; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: .6rem .85rem; }
+  .rank li.me { border-color: var(--blue); }
+  .rank .pos { font-family: var(--display); font-size: 1.2rem; }
+
+  .toast { position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: .7rem 1.2rem; border-radius: 12px; max-width: min(92vw, 460px); z-index: 10; font-size: .95rem; }
+  @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="wax" viewBox="0 0 40 40">
+    <path d="M20 1.5l3.2 2.6 4-.9 2.2 3.5 4.1.2 1 4 3.5 2.3-.9 4 2.5 3.3-2.5 3.3.9 4-3.5 2.3-1 4-4.1.2-2.2 3.5-4-.9L20 38.5l-3.2-2.6-4 .9-2.2-3.5-4.1-.2-1-4-3.5-2.3.9-4L1.4 20l2.5-3.3-.9-4 3.5-2.3 1-4 4.1-.2 2.2-3.5 4 .9z" fill="#8E1B2E"/>
+    <circle cx="20" cy="20" r="12.5" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2" stroke-dasharray="2 2"/>
+    <text x="20" y="26" text-anchor="middle" font-family="Georgia, serif" font-size="17" fill="#F3D9DC">S</text>
+  </symbol>
+</svg>
+
+<header>
+  <div class="stripe" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="brand"><svg class="wax" aria-hidden="true"><use href="#wax"/></svg><span>Sealed</span></div>
+    <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+      <button class="tab" role="tab" data-tab="wall" aria-selected="true">Wall</button>
+      <button class="tab" role="tab" data-tab="seal" aria-selected="false">Seal</button>
+      <button class="tab" role="tab" data-tab="mine" aria-selected="false">My capsules</button>
+      <button class="tab" role="tab" data-tab="fore" aria-selected="false">Forecasters</button>
+      <button class="tab" role="tab" id="tab-acct" data-tab="acct" aria-selected="false">Log in</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <noscript>Sealed needs JavaScript.</noscript>
+
+  <!-- WALL -->
+  <section id="p-wall" role="tabpanel">
+    <h1 class="hero">Write it now.<br>Open it later.</h1>
+    <p class="lead">Seal a letter or a prediction until a date you choose. Until then not even you can read it, and a fingerprint proves it was never changed.</p>
+    <button class="btn" data-go="seal">Seal a capsule</button>
+    <div class="stats" aria-live="polite">
+      <div class="stat"><b id="st-sealed">-</b><span>capsules sealed</span></div>
+      <div class="stat"><b id="st-opened">-</b><span>already opened</span></div>
+      <div class="stat"><b id="st-users">-</b><span>people</span></div>
+      <div class="stat"><b id="st-next">-</b><span>until the next public one opens</span></div>
+    </div>
+    <h2>The wall</h2>
+    <p class="muted" style="margin-top:-.4rem">Public capsules that have been opened. Check any seal yourself.</p>
+    <div class="list" id="wall"></div>
+    <p><button class="btn ghost" id="more" hidden>Load more</button></p>
+  </section>
+
+  <!-- SEAL -->
+  <section id="p-seal" role="tabpanel" hidden>
+    <h2>Seal a capsule</h2>
+    <div id="seal-gate" class="panel" hidden>
+      <p>Log in to seal capsules. It takes ten seconds.</p>
+      <button class="btn" data-go="acct">Log in or sign up</button>
+    </div>
+    <div id="seal-wrap" class="panel">
+      <form class="stack" id="sealform" novalidate>
+        <label for="f-title">Title<input id="f-title" type="text" maxlength="60" placeholder="e.g. Who wins the final?"></label>
+        <label for="f-text">Message <span class="hint" id="f-count">0 / 1000</span>
+          <textarea id="f-text" maxlength="1000" placeholder="Write to future you, or make a prediction you can be held to."></textarea></label>
+        <div class="lab">Kind
+          <div class="row" id="f-type" role="group" aria-label="Kind">
+            <button type="button" class="chip" data-type="letter" aria-pressed="true">Letter to future me</button>
+            <button type="button" class="chip" data-type="prediction" aria-pressed="false">Prediction</button>
+          </div>
+        </div>
+        <div class="lab">Opens in
+          <div class="row" id="f-presets" role="group" aria-label="Quick choices">
+            <button type="button" class="chip" data-in="65">About 2 minutes (try it)</button>
+            <button type="button" class="chip" data-in="3600">1 hour</button>
+            <button type="button" class="chip" data-in="86400">1 day</button>
+            <button type="button" class="chip" data-in="604800">1 week</button>
+            <button type="button" class="chip" data-in="2592000">1 month</button>
+            <button type="button" class="chip" data-in="31536000">1 year</button>
+          </div>
+        </div>
+        <label for="f-when">Or pick an exact time <input id="f-when" type="datetime-local"></label>
+        <div class="lab">Who can read it after it opens?
+          <div class="row" id="f-vis" role="group" aria-label="Visibility">
+            <button type="button" class="chip" data-vis="private" aria-pressed="true">Only me</button>
+            <button type="button" class="chip" data-vis="public" aria-pressed="false">Everyone (on the wall)</button>
+          </div>
+        </div>
+        <p class="err" id="f-err" role="alert"></p>
+        <div><button class="btn" type="submit">Seal it</button></div>
+      </form>
+      <div class="note" id="f-note" hidden></div>
+    </div>
+  </section>
+
+  <!-- MINE -->
+  <section id="p-mine" role="tabpanel" hidden>
+    <h2>My capsules</h2>
+    <div id="mine-gate" class="panel" hidden>
+      <p>Log in to see your capsules.</p>
+      <button class="btn" data-go="acct">Log in or sign up</button>
+    </div>
+    <div id="mine-wrap">
+      <div class="stats" id="mine-stats"></div>
+      <div class="list" id="mine"></div>
+    </div>
+  </section>
+
+  <!-- FORECASTERS -->
+  <section id="p-fore" role="tabpanel" hidden>
+    <h2>Forecasters</h2>
+    <p class="muted" style="margin-top:-.4rem">People ranked by how often their predictions came true. You need 3 marked predictions to appear. Partly true counts as half.</p>
+    <ol class="rank" id="rank"></ol>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section id="p-acct" role="tabpanel" hidden>
+    <h2>Account</h2>
+    <div id="acct"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var user = null, stats = null, offset = 0, wall = [], mine = [], nextOpen = null, authMode = 'login';
+  var fType = 'letter', fVis = 'private', refreshed = {};
+  var TYPE = { letter: 'Letter', prediction: 'Prediction' };
+  var OUT = { 'true': 'Came true', partly: 'Partly true', 'false': 'Did not happen' };
+
+  /* ---------- helpers ---------- */
+  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function now() { return Date.now() + offset; }
+  function sync(serverNow) { if (serverNow) offset = serverNow - Date.now(); }
+  function fmtDate(ms) { return new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+  function fmtDur(ms) {
+    if (ms <= 0) return 'now';
+    var s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    if (d > 0) return d + 'd ' + pad(h) + 'h ' + pad(m) + 'm';
+    if (h > 0) return h + 'h ' + pad(m) + 'm ' + pad(x) + 's';
+    return pad(m) + 'm ' + pad(x) + 's';
+  }
+  function ceilMinute(ms) { return Math.ceil(ms / 60000) * 60000; }
+  function toLocalInput(ms) { var d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  var toastTimer;
+  function toast(msg) { var el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; }, 4200); }
+  function api(method, url, body) {
+    var opt = { method: method, headers: { 'X-Sealed': '1' }, credentials: 'same-origin' };
+    if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+    return fetch(url, opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error(j.error || 'Request failed'); e.status = r.status; throw e; }
+        return j;
+      });
+    });
+  }
+  function sha256hex(s) {
+    if (!(window.crypto && crypto.subtle)) return Promise.reject(new Error('nocrypto'));
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
+    });
+  }
+
+  /* ---------- cards ---------- */
+  function waxIcon() { return '<svg class="wax" aria-hidden="true"><use href="#wax"/></svg>'; }
+  function outcomeBadge(c) { return c.outcome ? '<span class="badge ' + c.outcome + '">' + OUT[c.outcome] + '</span>' : ''; }
+  function verifyBtn(c) { return '<button class="mini" data-verify="' + c.id + '">Verify seal</button>'; }
+
+  function wallCard(c) {
+    return '<article class="cap"><div class="cap-head"><span class="tag">' + TYPE[c.type] + '</span><span class="mono small muted">opened ' + fmtDate(c.unlockAt) + '</span></div>' +
+      '<h3>' + esc(c.title) + '</h3>' + outcomeBadge(c) + '<p class="body">' + esc(c.text) + '</p>' +
+      '<div class="cap-foot"><span class="small muted">by <strong>' + esc(c.author) + '</strong>, sealed ' + fmtDate(c.createdAt) + '</span>' +
+      '<span class="row"><button class="mini" data-react="' + c.id + '" aria-pressed="' + c.mine + '">Wow · ' + c.reactions + '</button>' + verifyBtn(c) + '</span></div>' +
+      '<p class="vf" id="vf-' + c.id + '"></p></article>';
+  }
+  function mineCard(c) {
+    var vis = '<button class="mini" data-vis="' + c.id + '" data-to="' + (c.visibility === 'public' ? 'private' : 'public') + '">' +
+      (c.visibility === 'public' ? 'On the wall: take down' : 'Private: put on wall') + '</button>';
+    var burn = '<button class="mini danger" data-burn="' + c.id + '">Burn</button>';
+    if (!c.open) {
+      return '<article class="cap"><div class="cap-head"><span class="tag">' + TYPE[c.type] + ' · sealed</span><span class="mono small muted">' + c.visibility + '</span></div>' +
+        '<div class="sealrow">' + waxIcon() + '<div><h3>' + esc(c.title) + '</h3><p class="count" data-unlock="' + c.unlockAt + '" data-id="' + c.id + '">' + fmtDur(c.unlockAt - now()) + '</p>' +
+        '<p class="small muted">Opens ' + fmtDate(c.unlockAt) + '</p></div></div>' +
+        '<p class="mono small muted">Fingerprint ' + esc(c.hash.slice(0, 24)) + '...</p>' +
+        '<div class="cap-foot"><span></span><span class="row">' + vis + burn + '</span></div></article>';
+    }
+    var outBtns = '';
+    if (c.type === 'prediction' && !c.outcome) {
+      outBtns = '<p class="small"><strong>Did it happen?</strong> You can only answer once.</p><div class="row">' +
+        '<button class="mini" data-out="true" data-id="' + c.id + '">It came true</button><button class="mini" data-out="partly" data-id="' + c.id + '">Partly</button>' +
+        '<button class="mini" data-out="false" data-id="' + c.id + '">It did not</button></div>';
+    }
+    return '<article class="cap"><div class="cap-head"><span class="tag">' + TYPE[c.type] + ' · opened</span><span class="mono small muted">' + c.visibility + (c.visibility === 'public' ? ' · ' + c.reactions + ' wow' : '') + '</span></div>' +
+      '<h3>' + esc(c.title) + '</h3>' + outcomeBadge(c) + '<p class="body">' + esc(c.text) + '</p>' + outBtns +
+      '<p class="small muted">Sealed ' + fmtDate(c.createdAt) + ', opened ' + fmtDate(c.unlockAt) + '</p>' +
+      '<div class="cap-foot"><span>' + verifyBtn(c) + '</span><span class="row">' + vis + burn + '</span></div><p class="vf" id="vf-' + c.id + '"></p></article>';
+  }
+
+  function verify(c) {
+    var out = $('vf-' + c.id); if (!out) return;
+    out.className = 'vf'; out.textContent = 'Checking...';
+    sha256hex(c.salt + c.text).then(function (h) {
+      var good = h === c.hash;
+      out.className = 'vf ' + (good ? 'good' : 'bad');
+      out.textContent = good ? 'Seal intact. SHA-256 of salt + text matches the fingerprint made when it was sealed: ' + c.hash : 'Seal broken. The text does not match the fingerprint.';
+    }).catch(function () { out.className = 'vf bad'; out.textContent = 'Your browser can only verify on a secure (https) page.'; });
+  }
+
+  /* ---------- data loading and rendering ---------- */
+  function renderStats(s) {
+    sync(s.now); nextOpen = s.nextOpen;
+    $('st-sealed').textContent = s.sealed; $('st-opened').textContent = s.opened; $('st-users').textContent = s.users;
+    tick();
+  }
+  function loadStats() { return api('GET', '/api/stats').then(renderStats).catch(function () { $('st-next').textContent = '-'; }); }
+  function loadWall(reset) {
+    if (reset) wall = [];
+    return api('GET', '/api/wall?offset=' + wall.length + '&limit=8').then(function (r) {
+      sync(r.now); wall = wall.concat(r.items);
+      $('wall').innerHTML = wall.length ? wall.map(wallCard).join('') : '<div class="empty">No public capsules have opened yet. Seal one and be the first.</div>';
+      $('more').hidden = !r.more;
+    }).catch(function () { $('wall').innerHTML = '<div class="empty">Cannot reach the server right now.</div>'; $('more').hidden = true; });
+  }
+  function renderMineStats(s) {
+    if (!s) { $('mine-stats').innerHTML = ''; return; }
+    $('mine-stats').innerHTML = [[s.sealed, 'sealed'], [s.opened, 'opened'], [s.resolved, 'predictions marked'], [s.accuracy === null ? '-' : s.accuracy + '%', 'accuracy']]
+      .map(function (k) { return '<div class="stat"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('');
+  }
+  function loadMine() {
+    if (!user) return Promise.resolve();
+    return api('GET', '/api/capsules').then(function (r) {
+      sync(r.now); mine = r.capsules; stats = r.stats; renderMineStats(r.stats);
+      $('mine').innerHTML = mine.length ? mine.map(mineCard).join('') : '<div class="empty">Nothing sealed yet. Your first capsule is one minute away.</div>';
+    }).catch(function (e) { toast(e.message); });
+  }
+  function loadFore() {
+    api('GET', '/api/forecasters').then(function (r) {
+      $('rank').innerHTML = r.rows.length ? r.rows.map(function (x) {
+        return '<li class="' + (x.me ? 'me' : '') + '"><span class="pos">' + x.rank + '</span><span>' + esc(x.username) + (x.me ? ' (you)' : '') + '</span><span class="mono small">' + x.accuracy + '% · ' + x.resolved + ' predictions</span></li>';
+      }).join('') : '<li><span></span><span class="muted">Nobody has 3 marked predictions yet.</span><span></span></li>';
+    }).catch(function () { $('rank').innerHTML = ''; });
+  }
+
+  /* ---------- live countdowns ---------- */
+  function tick() {
+    $('st-next').textContent = nextOpen ? fmtDur(nextOpen - now()) : '-';
+    if (nextOpen && nextOpen - now() <= 0 && !refreshed['n' + nextOpen]) { refreshed['n' + nextOpen] = 1; setTimeout(function () { loadStats(); loadWall(true); }, 800); }
+    var els = $('mine').querySelectorAll ? $('mine').querySelectorAll('[data-unlock]') : [];
+    Array.prototype.forEach.call(els, function (el) {
+      var left = +el.dataset.unlock - now();
+      el.textContent = fmtDur(left);
+      if (left <= 0 && !refreshed[el.dataset.id]) { refreshed[el.dataset.id] = 1; setTimeout(function () { loadMine(); }, 800); }
+    });
+  }
+  setInterval(tick, 1000);
+
+  /* ---------- tabs ---------- */
+  function showTab(name) {
+    Array.prototype.forEach.call($('tabs').children, function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === name)); });
+    ['wall', 'seal', 'mine', 'fore', 'acct'].forEach(function (n) { $('p-' + n).hidden = n !== name; });
+    if (name === 'wall') { loadStats(); loadWall(true); }
+    if (name === 'seal') renderSeal();
+    if (name === 'mine') { renderGate(); loadMine(); }
+    if (name === 'fore') loadFore();
+    if (name === 'acct') renderAcct();
+  }
+  function renderGate() { $('mine-gate').hidden = !!user; $('mine-wrap').hidden = !user; }
+  function renderSeal() {
+    $('seal-gate').hidden = !!user; $('seal-wrap').hidden = !user;
+    $('f-when').min = toLocalInput(ceilMinute(now() + 60000));
+    Array.prototype.forEach.call($('f-type').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.type === fType)); });
+    Array.prototype.forEach.call($('f-vis').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.vis === fVis)); });
+  }
+
+  /* ---------- account ---------- */
+  function setUser(u, s) {
+    user = u || null; stats = s || null; mine = [];
+    $('tab-acct').textContent = user ? user.username : 'Log in';
+    renderAcct(); renderGate(); renderSeal();
+  }
+  function renderAcct() {
+    var el = $('acct');
+    if (user) {
+      el.innerHTML = '<div class="panel"><p><strong>' + esc(user.username) + '</strong><br><span class="muted small">Member since ' + new Date(user.created).toLocaleDateString(undefined, { dateStyle: 'medium' }) + '</span></p>' +
+        '<div class="row"><button class="btn ghost" data-act="logout">Log out</button><button class="mini danger" data-act="delete">Delete account and all capsules</button></div></div>';
+      return;
+    }
+    var login = authMode === 'login';
+    el.innerHTML = '<div class="panel"><div class="row" role="group" aria-label="Login or register">' +
+      '<button class="chip" data-mode="login" aria-pressed="' + login + '">Log in</button><button class="chip" data-mode="register" aria-pressed="' + !login + '">Create account</button></div>' +
+      '<form class="stack" id="authform" novalidate><label for="au">Username<input id="au" type="text" autocomplete="username" maxlength="20" autocapitalize="none"></label>' +
+      '<label for="ap">Password' + (login ? '' : ' <span class="hint">(8+ characters)</span>') + '<input id="ap" type="password" autocomplete="' + (login ? 'current-password' : 'new-password') + '" maxlength="100"></label>' +
+      '<p class="err" id="autherr" role="alert"></p><div><button class="btn" type="submit">' + (login ? 'Log in' : 'Create account') + '</button></div></form></div>';
+  }
+  function afterAuth(r) { sync(r.now); setUser(r.user, r.stats); toast('Welcome, ' + r.user.username + '.'); showTab('wall'); }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (e) {
+    var g = e.target.closest('[data-go]'); if (g) showTab(g.dataset.go);
+  });
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
+
+  $('acct').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.mode) { authMode = b.dataset.mode; renderAcct(); }
+    else if (b.dataset.act === 'logout') api('POST', '/api/logout').catch(function () {}).then(function () { setUser(null); toast('Logged out.'); });
+    else if (b.dataset.act === 'delete') {
+      if (!confirm('Permanently delete your account and every capsule you sealed?')) return;
+      api('DELETE', '/api/me').then(function () { setUser(null); toast('Account deleted.'); }).catch(function (err) { toast(err.message); });
+    }
+  });
+  $('acct').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = $('autherr'), btn = e.target.querySelector('button[type=submit]');
+    err.textContent = ''; btn.disabled = true;
+    api('POST', authMode === 'login' ? '/api/login' : '/api/register', { username: $('au').value, password: $('ap').value })
+      .then(afterAuth).catch(function (x) { btn.disabled = false; err.textContent = x.status ? x.message : 'Cannot reach the server.'; });
+  });
+
+  $('f-text').addEventListener('input', function () { $('f-count').textContent = this.value.length + ' / 1000'; });
+  $('f-type').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (b) { fType = b.dataset.type; renderSeal(); } });
+  $('f-vis').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (b) { fVis = b.dataset.vis; renderSeal(); } });
+  $('f-presets').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (b) $('f-when').value = toLocalInput(ceilMinute(now() + (+b.dataset['in']) * 1000)); });
+  $('sealform').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = $('f-err'), when = $('f-when').value;
+    err.textContent = '';
+    if (!when) { err.textContent = 'Choose when it should open.'; return; }
+    api('POST', '/api/capsules', { title: $('f-title').value, text: $('f-text').value, type: fType, visibility: fVis, unlockAt: new Date(when).getTime() }).then(function (r) {
+      var c = r.capsule;
+      $('f-note').hidden = false;
+      $('f-note').innerHTML = '<strong>Sealed.</strong> It opens ' + esc(fmtDate(c.unlockAt)) + '. Its fingerprint is <span class="mono small">' + esc(c.hash) + '</span>. Keep this: it proves the text cannot change.';
+      $('f-title').value = ''; $('f-text').value = ''; $('f-when').value = ''; $('f-count').textContent = '0 / 1000';
+      stats = r.stats; toast('Capsule sealed.');
+    }).catch(function (x) { err.textContent = x.status ? x.message : 'Cannot reach the server.'; });
+  });
+
+  $('wall').addEventListener('click', function (e) {
+    var r = e.target.closest('[data-react]'), v = e.target.closest('[data-verify]');
+    if (v) { var c = wall.filter(function (x) { return x.id === v.dataset.verify; })[0]; if (c) verify(c); }
+    if (r) {
+      if (!user) { toast('Log in to react.'); return; }
+      api('POST', '/api/capsules/' + r.dataset.react + '/react').then(function (x) {
+        wall.forEach(function (c) { if (c.id === r.dataset.react) { c.reactions = x.reactions; c.mine = x.mine; } });
+        r.textContent = 'Wow · ' + x.reactions; r.setAttribute('aria-pressed', String(x.mine));
+      }).catch(function (err) { toast(err.message); });
+    }
+  });
+  $('more').addEventListener('click', function () { loadWall(false); });
+
+  $('mine').addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.verify) { var c = mine.filter(function (x) { return x.id === t.dataset.verify; })[0]; if (c) verify(c); }
+    else if (t.dataset.burn) {
+      if (!confirm('Burn this capsule? It will be gone forever.')) return;
+      api('DELETE', '/api/capsules/' + t.dataset.burn).then(function () { toast('Capsule burned.'); loadMine(); }).catch(function (err) { toast(err.message); });
+    } else if (t.dataset.vis) {
+      api('POST', '/api/capsules/' + t.dataset.vis + '/visibility', { visibility: t.dataset.to }).then(function () { loadMine(); }).catch(function (err) { toast(err.message); });
+    } else if (t.dataset.out) {
+      api('POST', '/api/capsules/' + t.dataset.id + '/outcome', { outcome: t.dataset.out }).then(function () { toast('Recorded. It cannot be changed.'); loadMine(); }).catch(function (err) { toast(err.message); });
+    }
+  });
+
+  /* ---------- start ---------- */
+  api('GET', '/api/me').then(function (r) { sync(r.now); if (r.user) setUser(r.user, r.stats); }).catch(function () {});
+  renderAcct(); renderSeal(); showTab('wall');
+})();
+</script>
+</body>
+</html>
